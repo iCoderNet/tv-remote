@@ -630,33 +630,33 @@
       <div class="card">
         <div class="card-title">📜 History</div>
         <div class="history-list" id="history-list">
-          <div class="empty-state">Hali hech qanday link ochilmagan</div>
+          <div class="empty-state">No links have been opened yet</div>
         </div>
       </div>
     </div>
 
     <div class="error-screen" id="error-screen">
       <div class="error-icon">❌</div>
-      <div class="error-title">Session topilmadi</div>
-      <p class="error-message">TV'da yangi QR kod yarating va qaytadan skanerlang</p>
+      <div class="error-title">Session not found</div>
+      <p class="error-message">Create a new QR code on your TV and scan again</p>
     </div>
   </div>
 
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal">
       <div class="modal-icon">🚫</div>
-      <div class="modal-title">Sayt ochilmadi</div>
+      <div class="modal-title">Page cannot be loaded</div>
       <p class="modal-message">
-        Bu sayt iframe ichida ochilishni taqiqlagan.<br>
-        Alohida tabda ochishni xohlaysizmi?
+        This page is blocked by iframe restrictions.<br>
+        Open in new tab?
       </p>
       <div class="modal-url" id="modal-url"></div>
       <div class="modal-buttons">
         <button class="btn-secondary" id="modal-cancel">
-          Bekor qilish
+          Cancel
         </button>
         <button id="modal-confirm">
-          Ha, ochish
+          Open
         </button>
       </div>
     </div>
@@ -735,7 +735,7 @@
       }
       
       showToast(
-        proxyEnabled ? '✓ Proxy yoqildi' : '✗ Proxy o\'chirildi',
+        proxyEnabled ? 'Proxy enabled' : 'Proxy disabled',
         proxyEnabled ? 'success' : 'warning'
       );
     });
@@ -751,7 +751,7 @@
       if (data.success) {
         statusDot.classList.add('connected');
         statusText.textContent = `Connected to TV (${sessionId})`;
-        showToast('Muvaffaqiyatli ulandi! 🎉', 'success');
+        showToast('Connected successfully! 🎉', 'success');
         
         if (navigator.vibrate) {
           navigator.vibrate(200);
@@ -764,7 +764,7 @@
     socket.on('tv-disconnected', () => {
       statusDot.classList.remove('connected');
       statusText.textContent = 'TV disconnected';
-      showToast('TV uzildi', 'error');
+      showToast('TV disconnected', 'error');
     });
 
     socket.on('iframe-blocked', (url) => {
@@ -785,7 +785,7 @@
     modalConfirm.addEventListener('click', () => {
       if (blockedUrl) {
         socket.emit('open-in-new-tab-on-tv', { sessionId, url: blockedUrl });
-        showToast('TV\'da yangi tabda ochilmoqda! 🚀', 'success');
+        showToast('Opening a new tab on TV! 🚀', 'success');
       }
       
       modalOverlay.classList.remove('show');
@@ -802,7 +802,7 @@
     function sendUrl(useProxy = proxyEnabled) {
       const url = urlInput.value.trim();
       if (!url) {
-        showToast('URL kiriting!', 'error');
+        showToast('Enter URL!', 'error');
         return;
       }
 
@@ -810,8 +810,8 @@
       addToHistory(url);
       urlInput.value = '';
       
-      const method = useProxy ? 'proxy orqali' : 'to\'g\'ridan-to\'g\'ri';
-      showToast(`Link ${method} TV\'ga yuborildi! 📺`, 'success');
+      const method = useProxy ? 'Via Proxy' : 'directly';
+      showToast(`Link ${method} Sent to TV! 📺`, 'success');
       
       if (navigator.vibrate) {
         navigator.vibrate(50);
@@ -826,14 +826,14 @@
     newTabBtn.addEventListener('click', () => {
       const url = urlInput.value.trim();
       if (!url) {
-        showToast('URL kiriting!', 'error');
+        showToast('Enter URL!', 'error');
         return;
       }
 
       socket.emit('open-in-new-tab-on-tv', { sessionId, url });
       addToHistory(url);
       urlInput.value = '';
-      showToast('TV\'da yangi tabda ochilmoqda! 🔗', 'success');
+      showToast('Opening a new tab on TV! 🔗', 'success');
       
       if (navigator.vibrate) {
         navigator.vibrate(50);
@@ -844,30 +844,30 @@
       try {
         const text = await navigator.clipboard.readText();
         urlInput.value = text;
-        showToast('Nusxa olindi! 📋', 'success');
+        showToast('Copied successfully! 📋', 'success');
       } catch (err) {
-        showToast('Clipboard\'dan o\'qib bo\'lmadi', 'error');
+        showToast('Unable to read from clipboard', 'error');
       }
     });
 
     fullscreenBtn.addEventListener('click', () => {
       socket.emit('fullscreen', sessionId);
-      showToast('Full screen rejimi', 'success');
+      showToast('Full screen mode', 'success');
     });
 
     exitFullscreenBtn.addEventListener('click', () => {
       socket.emit('exit-fullscreen', sessionId);
-      showToast('Full screen yopildi', 'success');
+      showToast('Exited full screen', 'success');
     });
 
     refreshBtn.addEventListener('click', () => {
       socket.emit('refresh', sessionId);
-      showToast('Sahifa yangilandi', 'success');
+      showToast('Page refreshed', 'success');
     });
 
     backBtn.addEventListener('click', () => {
       socket.emit('go-back', sessionId);
-      showToast('Orqaga qaytildi', 'success');
+      showToast('Went back', 'success');
     });
 
     document.querySelectorAll('.bookmark-item').forEach(item => {
@@ -875,8 +875,8 @@
         const url = item.dataset.url;
         socket.emit('open-link', { sessionId, url, useProxy: proxyEnabled });
         addToHistory(url);
-        const method = proxyEnabled ? 'proxy orqali' : 'to\'g\'ridan-to\'g\'ri';
-        showToast(`Bookmark ${method} ochildi! ⭐`, 'success');
+        const method = proxyEnabled ? 'via proxy' : 'directly';
+        showToast(`Bookmark opened ${method}! ⭐`, 'success');
       });
     });
 
@@ -893,7 +893,7 @@
 
     function renderHistory() {
       if (history.length === 0) {
-        historyList.innerHTML = '<div class="empty-state">Hali hech qanday link ochilmagan</div>';
+        historyList.innerHTML = '<div class="empty-state">No links have been bookmarked</div>';
         return;
       }
 
@@ -905,8 +905,8 @@
         item.addEventListener('click', () => {
           const url = item.dataset.url;
           socket.emit('open-link', { sessionId, url, useProxy: proxyEnabled });
-          const method = proxyEnabled ? 'proxy orqali' : 'to\'g\'ridan-to\'g\'ri';
-          showToast(`Link ${method} qayta ochildi! 📜`, 'success');
+          const method = proxyEnabled ? 'via proxy' : 'directly';
+          showToast(`Link opened ${method}! 📜`, 'success');
         });
       });
     }

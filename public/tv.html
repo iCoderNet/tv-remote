@@ -317,13 +317,13 @@
   <div id="welcome-screen">
     <div class="logo">📺</div>
     <h1>TV Remote</h1>
-    <p class="subtitle">Telefoningiz bilan TV'ni boshqaring</p>
+    <p class="subtitle">Telefoning TV</p>
     
     <div id="qr-container">
       <div id="qrcode"></div>
     </div>
     
-    <p class="scan-instruction">Telefon kamerasi bilan QR kodni skanerlang</p>
+    <p class="scan-instruction">Scan the QR code with your phone camera</p>
     <div class="url-display" id="url-display">Connecting...</div>
   </div>
 
@@ -335,10 +335,10 @@
     </div>
     <div class="error-screen" id="error-screen">
       <div class="error-icon">🚫</div>
-      <div class="error-title">Sayt ochilmadi</div>
+      <div class="error-title">Page Not Found</div>
       <div class="error-message">
-        Bu sayt iframe ichida ochilishni taqiqlagan (X-Frame-Options).<br>
-        Telefonda xabar yuborildi - alohida tabda ochish mumkin.
+        This page is blocked by iframe restrictions (X-Frame-Options).<br>
+        Open in new tab on phone.
       </div>
       <div class="error-url" id="error-url"></div>
     </div>
@@ -388,15 +388,15 @@
     // Phone connected
     socket.on('phone-connected', () => {
       statusDot.classList.add('connected');
-      connectionStatus.textContent = '📱 Telefon ulandi';
-      showNotification('Telefon muvaffaqiyatli ulandi!', 'success');
+      connectionStatus.textContent = '📱 Phone connected';
+      showNotification('Phone successfully connected', 'success');
     });
 
     // Phone disconnected
     socket.on('phone-disconnected', () => {
       statusDot.classList.remove('connected');
       connectionStatus.textContent = 'Waiting for phone...';
-      showNotification('Telefon uzildi', 'error');
+      showNotification('Phone disconnected', 'error');
     });
 
     // Open link
@@ -485,7 +485,7 @@
       
       // Notify phone
       socket.emit('iframe-error', { sessionId, url });
-      showNotification('Sayt iframe\'da ochilmadi', 'error');
+      showNotification('Unable to open site in iframe', 'error');
     }
 
     // Phone confirmed to open in new tab
@@ -530,16 +530,16 @@
       errorScreen.classList.remove('show');
       loadingIndicator.classList.remove('hidden');
       contentFrame.src = contentFrame.src;
-      showNotification('Sahifa yangilandi', 'success');
+      showNotification('Page updated', 'success');
     });
 
     // Go back
     socket.on('go-back', () => {
       try {
         contentFrame.contentWindow.history.back();
-        showNotification('Orqaga qaytildi', 'success');
+        showNotification('Returned', 'success');
       } catch (e) {
-        showNotification('Orqaga qaytib bo\'lmadi', 'error');
+        showNotification('Couldn\'t go back', 'error');
       }
     });
 

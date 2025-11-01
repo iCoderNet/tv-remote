@@ -38,6 +38,16 @@ Professional web-based TV remote control system with advanced reverse proxy capa
 - **Error Handling** - Graceful error messages
 - **New Tab Option** - Open blocked sites in separate tabs
 
+## Screenshots
+
+### TV Interface
+
+![TV Interface](./images/TV.png)
+
+### Phone Interface
+
+![Phone Interface](./images/phone.png)
+
 ## 🚀 Quick Start
 
 ### Prerequisites
