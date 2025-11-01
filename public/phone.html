@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TV Remote - Phone</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>">
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #1a1a1a;
+      --bg-card: #161616;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --text: #e5e5e5;
+      --text-dim: #a0a0a0;
+      --border: rgba(255, 255, 255, 0.1);
+      --success: #10b981;
+      --error: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+      padding-bottom: 40px;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-top: 20px;
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-top: 10px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--error);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.connected {
+      background: var(--success);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .url-input-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    input[type="text"]::placeholder {
+      color: var(--text-dim);
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: #252525;
+      border-color: var(--accent);
+    }
+
+    .btn-small {
+      padding: 10px 16px;
+      font-size: 14px;
+    }
+
+    .btn-icon {
+      width: 48px;
+      padding: 14px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-full {
+      width: 100%;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .controls button {
+      justify-content: center;
+    }
+
+    /* Toggle Switch */
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      transition: all 0.2s;
+    }
+
+    .toggle-container.active {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: var(--accent);
+    }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .toggle-icon {
+      font-size: 20px;
+    }
+
+    .toggle-text {
+      flex: 1;
+    }
+
+    .toggle-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      display: block;
+    }
+
+    .toggle-description {
+      font-size: 12px;
+      color: var(--text-dim);
+      display: block;
+      margin-top: 2px;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 28px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .toggle-switch::before {
+      content: '';
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 11px;
+      top: 2px;
+      left: 2px;
+      background: var(--text-dim);
+      transition: all 0.3s;
+    }
+
+    .toggle-switch.active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .toggle-switch.active::before {
+      left: 24px;
+      background: white;
+    }
+
+    .proxy-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .proxy-badge.disabled {
+      background: rgba(160, 160, 160, 0.2);
+      border-color: var(--text-dim);
+      color: var(--text-dim);
+    }
+
+    .bookmark-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bookmark-item {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .bookmark-item:hover {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .bookmark-item:active {
+      transform: scale(0.98);
+    }
+
+    .bookmark-name {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .bookmark-url {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .bookmark-icon {
+      font-size: 20px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-item:hover {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-dim);
+      font-size: 14px;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 400px;
+      width: 100%;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal-icon {
+      font-size: 64px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 22px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 12px;
+      color: var(--warning);
+    }
+
+    .modal-message {
+      text-align: center;
+      color: var(--text-dim);
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .modal-url {
+      background: var(--bg-secondary);
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      word-break: break-all;
+      margin-bottom: 24px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-buttons button {
+      flex: 1;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(26, 26, 26, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 20px;
+      color: var(--text);
+      font-size: 14px;
+      z-index: 1000;
+      animation: toastSlideUp 0.3s ease;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    @keyframes toastSlideUp {
+      from {
+        transform: translateX(-50%) translateY(100px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .toast.success {
+      border-color: var(--success);
+    }
+
+    .toast.error {
+      border-color: var(--error);
+    }
+
+    .toast.warning {
+      border-color: var(--warning);
+    }
+
+    .error-screen {
+      display: none;
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .error-screen.show {
+      display: block;
+    }
+
+    .error-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .error-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .error-message {
+      color: var(--text-dim);
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">📱</div>
+      <h1>TV Remote</h1>
+      <div class="status">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Connecting...</span>
+      </div>
+    </header>
+
+    <div id="main-content">
+      <!-- Proxy Toggle -->
+      <div class="card">
+        <div class="card-title">
+          ⚙️ Settings
+        </div>
+        <div class="toggle-container" id="proxy-toggle-container">
+          <div class="toggle-label">
+            <div class="toggle-icon">🔄</div>
+            <div class="toggle-text">
+              <span class="toggle-title">Reverse Proxy</span>
+              <span class="toggle-description">Bypass iframe restrictions</span>
+            </div>
+          </div>
+          <div class="toggle-switch" id="proxy-toggle"></div>
+        </div>
+      </div>
+
+      <!-- URL Input -->
+      <div class="card">
+        <div class="card-title">
+          <span>🌐 Enter URL</span>
+          <span class="proxy-badge" id="proxy-badge">Direct</span>
+        </div>
+        <div class="url-input-group">
+          <input type="text" id="url-input" placeholder="youtube.com, netflix.com..." />
+          <button class="btn-icon" id="paste-btn" title="Paste">📋</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn-full" id="submit-btn">
+            <span>📺 Open on TV</span>
+          </button>
+        </div>
+        <div class="btn-row" style="margin-top: 8px;">
+          <button class="btn-secondary btn-full" id="new-tab-btn">
+            <span>🔗 Open in New Tab</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="card">
+        <div class="card-title">🎮 Controls</div>
+        <div class="controls">
+          <button class="btn-secondary" id="fullscreen-btn">
+            ⛶ Full Screen
+          </button>
+          <button class="btn-secondary" id="refresh-btn">
+            ↻ Refresh
+          </button>
+          <button class="btn-secondary" id="back-btn">
+            ← Back
+          </button>
+          <button class="btn-secondary" id="exit-fullscreen-btn">
+            ⛶ Exit Full
+          </button>
+        </div>
+      </div>
+
+      <!-- Bookmarks -->
+      <div class="card">
+        <div class="card-title">⭐ Bookmarks</div>
+        <div class="bookmark-list">
+          <div class="bookmark-item" data-url="uzmovi.tv">
+            <div>
+              <div class="bookmark-name">UzMovi TV</div>
+              <div class="bookmark-url">uzmovi.tv</div>
+            </div>
+            <div class="bookmark-icon">▶️</div>
+          </div>
+          <div class="bookmark-item" data-url="asilmedia.org">
+            <div>
+              <div class="bookmark-name">Asil Media</div>
+              <div class="bookmark-url">asilmedia.org</div>
+            </div>
+            <div class="bookmark-icon">🎥</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="card">
+        <div class="card-title">📜 History</div>
+        <div class="history-list" id="history-list">
+          <div class="empty-state">Hali hech qanday link ochilmagan</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-screen" id="error-screen">
+      <div class="error-icon">❌</div>
+      <div class="error-title">Session topilmadi</div>
+      <p class="error-message">TV'da yangi QR kod yarating va qaytadan skanerlang</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-icon">🚫</div>
+      <div class="modal-title">Sayt ochilmadi</div>
+      <p class="modal-message">
+        Bu sayt iframe ichida ochilishni taqiqlagan.<br>
+        Alohida tabda ochishni xohlaysizmi?
+      </p>
+      <div class="modal-url" id="modal-url"></div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" id="modal-cancel">
+          Bekor qilish
+        </button>
+        <button id="modal-confirm">
+          Ha, ochish
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    const urlParams = new URLSearchParams(window.location.search);
+    const pathParts = window.location.pathname.split('/');
+    const sessionId = pathParts[pathParts.length - 1] || urlParams.get('session');
+    
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const urlInput = document.getElementById('url-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const newTabBtn = document.getElementById('new-tab-btn');
+    const pasteBtn = document.getElementById('paste-btn');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const backBtn = document.getElementById('back-btn');
+    const historyList = document.getElementById('history-list');
+    const mainContent = document.getElementById('main-content');
+    const errorScreen = document.getElementById('error-screen');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalUrl = document.getElementById('modal-url');
+    const modalCancel = document.getElementById('modal-cancel');
+    const modalConfirm = document.getElementById('modal-confirm');
+    const proxyToggle = document.getElementById('proxy-toggle');
+    const proxyToggleContainer = document.getElementById('proxy-toggle-container');
+    const proxyBadge = document.getElementById('proxy-badge');
+
+    let history = [];
+    let proxyEnabled = true; // Default: enabled
+    let blockedUrl = null;
+
+    // Load settings
+    try {
+      const savedProxy = localStorage.getItem('tv-remote-proxy-enabled');
+      if (savedProxy !== null) {
+        proxyEnabled = savedProxy === 'true';
+      }
+      history = JSON.parse(localStorage.getItem('tv-remote-history') || '[]');
+    } catch (e) {
+      console.log('LocalStorage not available');
+    }
+
+    // Update proxy UI
+    function updateProxyUI() {
+      if (proxyEnabled) {
+        proxyToggle.classList.add('active');
+        proxyToggleContainer.classList.add('active');
+        proxyBadge.textContent = 'Proxy';
+        proxyBadge.classList.remove('disabled');
+      } else {
+        proxyToggle.classList.remove('active');
+        proxyToggleContainer.classList.remove('active');
+        proxyBadge.textContent = 'Direct';
+        proxyBadge.classList.add('disabled');
+      }
+
+      try {
+        localStorage.setItem('tv-remote-proxy-enabled', proxyEnabled);
+      } catch (e) {}
+    }
+
+    updateProxyUI();
+
+    // Toggle proxy
+    proxyToggleContainer.addEventListener('click', () => {
+      proxyEnabled = !proxyEnabled;
+      updateProxyUI();
+      
+      if (navigator.vibrate) {
+        navigator.vibrate(30);
+      }
+      
+      showToast(
+        proxyEnabled ? '✓ Proxy yoqildi' : '✗ Proxy o\'chirildi',
+        proxyEnabled ? 'success' : 'warning'
+      );
+    });
+
+    // Join session
+    if (sessionId) {
+      socket.emit('join-session', sessionId);
+    } else {
+      showError();
+    }
+
+    socket.on('session-joined', (data) => {
+      if (data.success) {
+        statusDot.classList.add('connected');
+        statusText.textContent = `Connected to TV (${sessionId})`;
+        showToast('Muvaffaqiyatli ulandi! 🎉', 'success');
+        
+        if (navigator.vibrate) {
+          navigator.vibrate(200);
+        }
+      } else {
+        showError();
+      }
+    });
+
+    socket.on('tv-disconnected', () => {
+      statusDot.classList.remove('connected');
+      statusText.textContent = 'TV disconnected';
+      showToast('TV uzildi', 'error');
+    });
+
+    socket.on('iframe-blocked', (url) => {
+      blockedUrl = url;
+      modalUrl.textContent = url;
+      modalOverlay.classList.add('show');
+      
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
+    });
+
+    modalCancel.addEventListener('click', () => {
+      modalOverlay.classList.remove('show');
+      blockedUrl = null;
+    });
+
+    modalConfirm.addEventListener('click', () => {
+      if (blockedUrl) {
+        socket.emit('open-in-new-tab-on-tv', { sessionId, url: blockedUrl });
+        showToast('TV\'da yangi tabda ochilmoqda! 🚀', 'success');
+      }
+      
+      modalOverlay.classList.remove('show');
+      blockedUrl = null;
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) {
+        modalOverlay.classList.remove('show');
+        blockedUrl = null;
+      }
+    });
+
+    function sendUrl(useProxy = proxyEnabled) {
+      const url = urlInput.value.trim();
+      if (!url) {
+        showToast('URL kiriting!', 'error');
+        return;
+      }
+
+      socket.emit('open-link', { sessionId, url, useProxy });
+      addToHistory(url);
+      urlInput.value = '';
+      
+      const method = useProxy ? 'proxy orqali' : 'to\'g\'ridan-to\'g\'ri';
+      showToast(`Link ${method} TV\'ga yuborildi! 📺`, 'success');
+      
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }
+
+    submitBtn.addEventListener('click', () => sendUrl());
+    urlInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendUrl();
+    });
+
+    newTabBtn.addEventListener('click', () => {
+      const url = urlInput.value.trim();
+      if (!url) {
+        showToast('URL kiriting!', 'error');
+        return;
+      }
+
+      socket.emit('open-in-new-tab-on-tv', { sessionId, url });
+      addToHistory(url);
+      urlInput.value = '';
+      showToast('TV\'da yangi tabda ochilmoqda! 🔗', 'success');
+      
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    });
+
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        urlInput.value = text;
+        showToast('Nusxa olindi! 📋', 'success');
+      } catch (err) {
+        showToast('Clipboard\'dan o\'qib bo\'lmadi', 'error');
+      }
+    });
+
+    fullscreenBtn.addEventListener('click', () => {
+      socket.emit('fullscreen', sessionId);
+      showToast('Full screen rejimi', 'success');
+    });
+
+    exitFullscreenBtn.addEventListener('click', () => {
+      socket.emit('exit-fullscreen', sessionId);
+      showToast('Full screen yopildi', 'success');
+    });
+
+    refreshBtn.addEventListener('click', () => {
+      socket.emit('refresh', sessionId);
+      showToast('Sahifa yangilandi', 'success');
+    });
+
+    backBtn.addEventListener('click', () => {
+      socket.emit('go-back', sessionId);
+      showToast('Orqaga qaytildi', 'success');
+    });
+
+    document.querySelectorAll('.bookmark-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const url = item.dataset.url;
+        socket.emit('open-link', { sessionId, url, useProxy: proxyEnabled });
+        addToHistory(url);
+        const method = proxyEnabled ? 'proxy orqali' : 'to\'g\'ridan-to\'g\'ri';
+        showToast(`Bookmark ${method} ochildi! ⭐`, 'success');
+      });
+    });
+
+    function addToHistory(url) {
+      history.unshift(url);
+      history = history.slice(0, 10);
+      
+      try {
+        localStorage.setItem('tv-remote-history', JSON.stringify(history));
+      } catch (e) {}
+      
+      renderHistory();
+    }
+
+    function renderHistory() {
+      if (history.length === 0) {
+        historyList.innerHTML = '<div class="empty-state">Hali hech qanday link ochilmagan</div>';
+        return;
+      }
+
+      historyList.innerHTML = history.map(url => `
+        <div class="history-item" data-url="${url}">${url}</div>
+      `).join('');
+
+      historyList.querySelectorAll('.history-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const url = item.dataset.url;
+          socket.emit('open-link', { sessionId, url, useProxy: proxyEnabled });
+          const method = proxyEnabled ? 'proxy orqali' : 'to\'g\'ridan-to\'g\'ri';
+          showToast(`Link ${method} qayta ochildi! 📜`, 'success');
+        });
+      });
+    }
+
+    renderHistory();
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'toastSlideUp 0.3s ease reverse';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function showError() {
+      mainContent.style.display = 'none';
+      errorScreen.classList.add('show');
+      statusText.textContent = 'Not connected';
+    }
+  </script>
+</body>
+</html>

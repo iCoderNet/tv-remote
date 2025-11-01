@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TV Remote - TV</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #1a1a1a;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --text: #e5e5e5;
+      --text-dim: #a0a0a0;
+      --border: rgba(255, 255, 255, 0.1);
+      --success: #10b981;
+      --error: #ef4444;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    /* Top Bar */
+    #top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: rgba(26, 26, 26, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 30px;
+      z-index: 1000;
+      transition: transform 0.3s ease;
+    }
+
+    #top-bar.hidden {
+      transform: translateY(-100%);
+    }
+
+    .bar-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--error);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.connected {
+      background: var(--success);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .session-info {
+      font-size: 14px;
+      color: var(--text-dim);
+    }
+
+    .session-id {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      letter-spacing: 2px;
+    }
+
+    /* Welcome Screen */
+    #welcome-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 40px;
+      text-align: center;
+    }
+
+    #welcome-screen.hidden {
+      display: none;
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 42px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      color: var(--text-dim);
+      margin-bottom: 50px;
+    }
+
+    #qr-container {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      margin-bottom: 30px;
+    }
+
+    #qrcode {
+      display: inline-block;
+    }
+
+    .scan-instruction {
+      font-size: 16px;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .url-display {
+      font-size: 14px;
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      padding: 10px 20px;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    /* Content Frame */
+    #content-container {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    #content-container.show {
+      display: block;
+    }
+
+    #content-container.fullscreen {
+      top: 0;
+    }
+
+    #content-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: white;
+    }
+
+    /* Loading Indicator */
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 10;
+    }
+
+    .loading.hidden {
+      display: none;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: var(--text-dim);
+      font-size: 14px;
+    }
+
+    /* Error Screen */
+    .error-screen {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      padding: 40px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      max-width: 500px;
+      z-index: 100;
+    }
+
+    .error-screen.show {
+      display: block;
+    }
+
+    .error-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .error-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--error);
+    }
+
+    .error-message {
+      color: var(--text-dim);
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .error-url {
+      background: var(--bg-primary);
+      padding: 10px;
+      border-radius: 8px;
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      word-break: break-all;
+      margin-bottom: 20px;
+    }
+
+    /* Notification */
+    .notification {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      padding: 16px 24px;
+      background: rgba(26, 26, 26, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 14px;
+      z-index: 2000;
+      animation: slideIn 0.3s ease;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .notification.success {
+      border-color: var(--success);
+    }
+
+    .notification.error {
+      border-color: var(--error);
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Bar -->
+  <div id="top-bar" class="hidden">
+    <div class="bar-left">
+      <div class="status-dot" id="status-dot"></div>
+      <div>
+        <div class="session-info">Session ID:</div>
+        <div class="session-id" id="session-display"></div>
+      </div>
+    </div>
+    <div id="connection-status">Waiting for phone...</div>
+  </div>
+
+  <!-- Welcome Screen -->
+  <div id="welcome-screen">
+    <div class="logo">📺</div>
+    <h1>TV Remote</h1>
+    <p class="subtitle">Telefoningiz bilan TV'ni boshqaring</p>
+    
+    <div id="qr-container">
+      <div id="qrcode"></div>
+    </div>
+    
+    <p class="scan-instruction">Telefon kamerasi bilan QR kodni skanerlang</p>
+    <div class="url-display" id="url-display">Connecting...</div>
+  </div>
+
+  <!-- Content Frame -->
+  <div id="content-container">
+    <div class="loading" id="loading-indicator">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading...</div>
+    </div>
+    <div class="error-screen" id="error-screen">
+      <div class="error-icon">🚫</div>
+      <div class="error-title">Sayt ochilmadi</div>
+      <div class="error-message">
+        Bu sayt iframe ichida ochilishni taqiqlagan (X-Frame-Options).<br>
+        Telefonda xabar yuborildi - alohida tabda ochish mumkin.
+      </div>
+      <div class="error-url" id="error-url"></div>
+    </div>
+    <iframe id="content-frame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" allow="fullscreen; autoplay; picture-in-picture"></iframe>
+  </div>
+
+  <script>
+    const socket = io();
+    let sessionId = null;
+    let isFullscreen = false;
+    let loadTimeout = null;
+
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const topBar = document.getElementById('top-bar');
+    const contentContainer = document.getElementById('content-container');
+    const contentFrame = document.getElementById('content-frame');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const errorScreen = document.getElementById('error-screen');
+    const errorUrl = document.getElementById('error-url');
+    const statusDot = document.getElementById('status-dot');
+    const connectionStatus = document.getElementById('connection-status');
+    const sessionDisplay = document.getElementById('session-display');
+    const urlDisplay = document.getElementById('url-display');
+
+    // Create session on load
+    socket.emit('create-session');
+
+    // Session created
+    socket.on('session-created', (id) => {
+      sessionId = id;
+      const url = `${window.location.origin}/phone/${id}`;
+      
+      // Generate QR code
+      new QRCode(document.getElementById('qrcode'), {
+        text: url,
+        width: 256,
+        height: 256,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+      });
+      
+      urlDisplay.textContent = url;
+      sessionDisplay.textContent = id;
+      topBar.classList.remove('hidden');
+    });
+
+    // Phone connected
+    socket.on('phone-connected', () => {
+      statusDot.classList.add('connected');
+      connectionStatus.textContent = '📱 Telefon ulandi';
+      showNotification('Telefon muvaffaqiyatli ulandi!', 'success');
+    });
+
+    // Phone disconnected
+    socket.on('phone-disconnected', () => {
+      statusDot.classList.remove('connected');
+      connectionStatus.textContent = 'Waiting for phone...';
+      showNotification('Telefon uzildi', 'error');
+    });
+
+    // Open link
+    socket.on('open-link', (data) => {
+      const { url, useProxy } = data;
+      
+      welcomeScreen.classList.add('hidden');
+      contentContainer.classList.add('show');
+      errorScreen.classList.remove('show');
+      loadingIndicator.classList.remove('hidden');
+      
+      // Add protocol if missing
+      let fullUrl = url;
+      if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+        fullUrl = 'https://' + fullUrl;
+      }
+      
+      // Clear any existing timeout
+      if (loadTimeout) {
+        clearTimeout(loadTimeout);
+      }
+      
+      // Use proxy if requested
+      if (useProxy) {
+        const proxyUrl = `/proxy?url=${encodeURIComponent(url)}`;
+        contentFrame.src = proxyUrl;
+        showNotification(`Opening via proxy: ${url}`, 'success');
+      } else {
+        // Set timeout for iframe loading (5 seconds)
+        loadTimeout = setTimeout(() => {
+          checkIframeError(fullUrl);
+        }, 5000);
+        
+        contentFrame.src = fullUrl;
+        showNotification(`Opening: ${url}`, 'success');
+      }
+    });
+
+    // Check if iframe loaded successfully
+    contentFrame.addEventListener('load', () => {
+      if (loadTimeout) {
+        clearTimeout(loadTimeout);
+      }
+      
+      // Check if iframe actually loaded content
+      setTimeout(() => {
+        try {
+          // Try to access iframe - if we can't, it might be cross-origin (good) or blocked (bad)
+          const iframeDoc = contentFrame.contentDocument || contentFrame.contentWindow.document;
+          
+          // If we can access it and it's empty or has error, it's blocked
+          if (iframeDoc && iframeDoc.body && iframeDoc.body.innerHTML.trim() === '') {
+            throw new Error('Empty iframe - likely blocked');
+          }
+          
+          // Successfully loaded
+          loadingIndicator.classList.add('hidden');
+          errorScreen.classList.remove('show');
+        } catch (e) {
+          // Cross-origin error is normal for successful loads
+          // But we need to check if iframe actually has src
+          if (contentFrame.src && contentFrame.src !== 'about:blank') {
+            // Assume it loaded successfully (cross-origin)
+            loadingIndicator.classList.add('hidden');
+            errorScreen.classList.remove('show');
+          } else {
+            // Actually blocked
+            checkIframeError(contentFrame.src);
+          }
+        }
+      }, 100);
+    });
+
+    // Handle iframe error
+    contentFrame.addEventListener('error', () => {
+      const url = contentFrame.src;
+      checkIframeError(url);
+    });
+
+    // Check for iframe loading errors
+    function checkIframeError(url) {
+      // Iframe is likely blocked
+      loadingIndicator.classList.add('hidden');
+      errorScreen.classList.add('show');
+      errorUrl.textContent = url;
+      
+      // Notify phone
+      socket.emit('iframe-error', { sessionId, url });
+      showNotification('Sayt iframe\'da ochilmadi', 'error');
+    }
+
+    // Phone confirmed to open in new tab
+    socket.on('open-in-new-tab', (url) => {
+      errorScreen.classList.remove('show');
+      
+      // Add protocol if missing
+      let fullUrl = url;
+      if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+        fullUrl = 'https://' + fullUrl;
+      }
+      
+      // Open in new window/tab
+      window.open(fullUrl, '_blank');
+      showNotification('Opening in new tab...', 'success');
+    });
+
+    // Fullscreen
+    socket.on('fullscreen', () => {
+      topBar.classList.add('hidden');
+      contentContainer.classList.add('fullscreen');
+      isFullscreen = true;
+      
+      if (contentFrame.requestFullscreen) {
+        contentFrame.requestFullscreen();
+      }
+    });
+
+    // Exit fullscreen
+    socket.on('exit-fullscreen', () => {
+      topBar.classList.remove('hidden');
+      contentContainer.classList.remove('fullscreen');
+      isFullscreen = false;
+      
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    });
+
+    // Refresh
+    socket.on('refresh', () => {
+      errorScreen.classList.remove('show');
+      loadingIndicator.classList.remove('hidden');
+      contentFrame.src = contentFrame.src;
+      showNotification('Sahifa yangilandi', 'success');
+    });
+
+    // Go back
+    socket.on('go-back', () => {
+      try {
+        contentFrame.contentWindow.history.back();
+        showNotification('Orqaga qaytildi', 'success');
+      } catch (e) {
+        showNotification('Orqaga qaytib bo\'lmadi', 'error');
+      }
+    });
+
+    // Listen for ESC key to exit fullscreen
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        socket.emit('exit-fullscreen', sessionId);
+      }
+    });
+
+    // Show notification
+    function showNotification(message, type = 'success') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'slideIn 0.3s ease reverse';
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

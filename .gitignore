@@ -1,0 +1,23 @@
+# Ignore node_modules
+/node_modules
+
+# Ignore log files
+*.log
+
+# Ignore temp files
+*.tmp
+*.swp
+*.swo
+
+# Ignore build files
+/build
+
+# Ignore local env files
+.env
+.env.local
+
+# Ignore coverage files
+/coverage
+
+# Ignore local storage files
+/storage

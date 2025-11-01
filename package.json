@@ -1,0 +1,26 @@
+{
+  "name": "tv-remote",
+  "version": "1.0.0",
+  "description": "Control your Smart TV from your phone using QR code and WebSockets",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "tv",
+    "remote",
+    "websocket",
+    "qr-code"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.1",
+    "express": "^4.18.2",
+    "socket.io": "^4.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
